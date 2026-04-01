@@ -1,0 +1,17 @@
+{
+  "skill_name": "hiring-assistant",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create a JD, offer, and HR Slack message for a 'Senior Backend Developer' with 5+ years of experience in Node.js and Postgres.",
+      "expected_output": "Plain text JD, Offer, and Slack message for the role.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "We need to hire a 'Marketing Manager' for our new product launch. Generate a JD, an offer (salary around 80k), and a Slack message for HR.",
+      "expected_output": "Plain text JD, Offer, and Slack message for a Marketing Manager role.",
+      "files": []
+    }
+  ]
+}
