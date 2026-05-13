@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Churn Analysis — Small Users & Micro · Oct 2025 – May 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+<style>
+:root{
+  --bg:#f0f2f5;--card:#fff;--header:#0f1b35;--accent:#e84545;--green:#27ae60;--orange:#e67e22;
+  --blue:#2563eb;--text:#1a1a2a;--muted:#6b7280;--border:#e5e7eb;--gap:16px;--r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+.wrap{max-width:1380px;margin:0 auto;padding:var(--gap)}
+
+/* HEADER */
+.hdr{background:var(--header);color:#fff;border-radius:var(--r);padding:20px 28px;margin-bottom:var(--gap);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.hdr-left h1{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.hdr-left p{font-size:12px;opacity:.65;margin-top:3px}
+.badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:5px 14px;font-size:12px;color:rgba(255,255,255,.85)}
+
+/* FILTERS */
+.filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.filters label{font-size:11px;color:rgba(255,255,255,.6);margin-right:2px}
+.filters select{padding:5px 10px;border:1px solid rgba(255,255,255,.2);border-radius:6px;background:rgba(255,255,255,.1);color:#fff;font-size:12px;cursor:pointer}
+.filters select option{background:#1a2744;color:#fff}
+
+/* KPI ROW */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap);margin-bottom:var(--gap)}
+.kpi{background:var(--card);border-radius:var(--r);padding:18px 22px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-top:3px solid var(--border)}
+.kpi.red{border-top-color:var(--accent)}
+.kpi.green{border-top-color:var(--green)}
+.kpi.blue{border-top-color:var(--blue)}
+.kpi.orange{border-top-color:var(--orange)}
+.kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-val{font-size:30px;font-weight:800;line-height:1}
+.kpi-sub{font-size:12px;color:var(--muted);margin-top:5px}
+.kpi-sub strong{color:var(--text)}
+
+/* CHART ROW */
+.chart-row{display:grid;grid-template-columns:2fr 1fr;gap:var(--gap);margin-bottom:var(--gap)}
+.chart-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--gap);margin-bottom:var(--gap)}
+.card{background:var(--card);border-radius:var(--r);padding:20px 22px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.card h3{font-size:13px;font-weight:600;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.card h3 .tag{background:#f3f4f6;color:var(--muted);font-size:10px;font-weight:500;padding:2px 7px;border-radius:10px}
+canvas{max-height:280px}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table thead th{padding:9px 12px;border-bottom:2px solid var(--border);color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;cursor:pointer;user-select:none;text-align:left}
+.data-table thead th:hover{color:var(--text);background:#f8f9fa}
+.data-table tbody td{padding:9px 12px;border-bottom:1px solid #f3f4f6;white-space:nowrap}
+.data-table tbody tr:hover{background:#fafbfc}
+.data-table tbody tr:last-child td{border-bottom:none}
+.pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
+.pill-red{background:#fef2f2;color:#991b1b}
+.pill-green{background:#f0fdf4;color:#166534}
+.pill-blue{background:#eff6ff;color:#1d4ed8}
+.pill-gray{background:#f3f4f6;color:#374151}
+.sort-arrow{margin-left:4px;opacity:.4}
+
+/* PAGINATION */
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 0 0;font-size:12px;color:var(--muted)}
+.pagination .page-info strong{color:var(--text)}
+.pagination button{padding:5px 12px;border:1px solid var(--border);background:var(--card);border-radius:5px;cursor:pointer;font-size:12px;color:var(--text)}
+.pagination button:hover:not(:disabled){background:#f3f4f6}
+.pagination button:disabled{opacity:.4;cursor:default}
+.pg-btns{display:flex;gap:6px}
+
+/* SECTION TITLE */
+.section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:20px 0 10px;padding-left:2px}
+
+/* FOOTER */
+.footer{text-align:center;font-size:11px;color:var(--muted);padding:20px 0 8px}
+
+/* NOTE */
+.note-bar{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 16px;font-size:12px;color:#92400e;margin-bottom:var(--gap);display:flex;gap:8px;align-items:flex-start}
+
+@media(max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr)}.chart-row{grid-template-columns:1fr}.chart-row-3{grid-template-columns:1fr}}
+@media print{body{background:#fff}.hdr{background:#1a1a2a}.filters{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-left">
+    <h1>Análisis de Churn — Small Users &amp; Micro</h1>
+    <p>Deals cerrados (Won) · Octubre 2025 – 13 Mayo 2026 · Fuente: HubSpot × ChartMogul</p>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <span class="badge">974 deals analizados</span>
+    <span class="badge">13 May 2026</span>
+    <div class="filters">
+      <label>Pipeline</label>
+      <select id="filt-pipeline" onchange="applyFilter()">
+        <option value="all">Todos</option>
+        <option value="Small users">Small Users</option>
+        <option value="Micro">Micro</option>
+      </select>
+      <label>AE</label>
+      <select id="filt-ae" onchange="applyFilter()">
+        <option value="all">Todos</option>
+      </select>
+      <label>Estado</label>
+      <select id="filt-status" onchange="applyFilter()">
+        <option value="all">Todos</option>
+        <option value="Churned">Solo Churned</option>
+        <option value="Active">Solo Activos</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- NOTE -->
+<div class="note-bar">
+  ⚠️ <span><strong>Metodología:</strong> Se detecta churn comparando el email del deal cerrado (extraído del Deal Name de HubSpot) contra los clientes activos en ChartMogul a fecha 13/05/2026. Si el email no aparece como activo en ChartMogul, se clasifica como churned. 85 deals sin campo "Contract length" se marcan como N/A.</span>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-row">
+  <div class="kpi blue">
+    <div class="kpi-label">Deals Won Analizados</div>
+    <div class="kpi-val" id="kpi-total">974</div>
+    <div class="kpi-sub">Oct 2025 – May 2026</div>
+  </div>
+  <div class="kpi green">
+    <div class="kpi-label">Siguen Activos</div>
+    <div class="kpi-val" id="kpi-active">772</div>
+    <div class="kpi-sub" id="kpi-active-sub"><strong>79.3%</strong> retención bruta</div>
+  </div>
+  <div class="kpi red">
+    <div class="kpi-label">Gross Churn Rate (clientes)</div>
+    <div class="kpi-val" id="kpi-churn-rate">20.7%</div>
+    <div class="kpi-sub" id="kpi-churned-count"><strong>202</strong> clientes perdidos</div>
+  </div>
+  <div class="kpi orange">
+    <div class="kpi-label">Gross Revenue Churn</div>
+    <div class="kpi-val" id="kpi-rev-churn">23.6%</div>
+    <div class="kpi-sub" id="kpi-rev-sub">€<strong>4,695</strong> perdidos de €19,886 total</div>
+  </div>
+</div>
+
+<!-- CHART ROW 1: Monthly trend + Pipeline doughnut -->
+<div class="chart-row">
+  <div class="card">
+    <h3>Evolución Mensual <span class="tag">deals activos vs churned + churn rate</span></h3>
+    <canvas id="monthlyChart"></canvas>
+  </div>
+  <div class="card">
+    <h3>Churn por Pipeline</h3>
+    <canvas id="pipelineChart"></canvas>
+  </div>
+</div>
+
+<!-- CHART ROW 2: AE bar chart + contract type -->
+<div class="chart-row">
+  <div class="card">
+    <h3>Churn Rate por AE <span class="tag">activos en azul / churned en rojo</span></h3>
+    <canvas id="aeChart" style="max-height:340px"></canvas>
+  </div>
+  <div class="card">
+    <h3>Revenue Perdido por Mes (€)</h3>
+    <canvas id="revChart"></canvas>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div class="section-title" id="table-section-title">Detalle Clientes (202 churned)</div>
+<div class="card">
+  <div class="tbl-wrap">
+    <table class="data-table" id="main-table">
+      <thead>
+        <tr>
+          <th onclick="sortTable('close_date')">Fecha Cierre<span class="sort-arrow" id="arr-close_date">▼</span></th>
+          <th onclick="sortTable('email')">Email</th>
+          <th onclick="sortTable('pipeline')">Pipeline</th>
+          <th onclick="sortTable('amount')">Amount €<span class="sort-arrow" id="arr-amount"></span></th>
+          <th onclick="sortTable('contract')">Contrato</th>
+          <th onclick="sortTable('ae')">AE</th>
+          <th onclick="sortTable('status')">Estado</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+  <div class="pagination">
+    <span class="page-info" id="page-info"></span>
+    <div class="pg-btns">
+      <button onclick="goPage(-1)" id="btn-prev">← Prev</button>
+      <button onclick="goPage(1)" id="btn-next">Sig →</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">Generado el 13 de Mayo 2026 · Datos: HubSpot (deals Won, Small Users & Micro, oct 2025 – may 2026) cruzados con ChartMogul (clientes activos)</div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────
+// DATA
+// ──────────────────────────────────────────────
+const MONTHLY = [{"month":"2025-10","month_label":"Oct 2025","total":89,"active":64,"churned":25,"arr_active":1436.41,"arr_churned":559.6,"churn_rate":28.1},{"month":"2025-11","month_label":"Nov 2025","total":129,"active":108,"churned":21,"arr_active":2045.28,"arr_churned":428.52,"churn_rate":16.3},{"month":"2025-12","month_label":"Dec 2025","total":133,"active":106,"churned":27,"arr_active":1472.75,"arr_churned":781.05,"churn_rate":20.3},{"month":"2026-01","month_label":"Jan 2026","total":79,"active":59,"churned":20,"arr_active":911.8,"arr_churned":391.74,"churn_rate":25.3},{"month":"2026-02","month_label":"Feb 2026","total":137,"active":102,"churned":35,"arr_active":2191.97,"arr_churned":1025.1,"churn_rate":25.5},{"month":"2026-03","month_label":"Mar 2026","total":187,"active":148,"churned":39,"arr_active":3482.31,"arr_churned":625.08,"churn_rate":20.9},{"month":"2026-04","month_label":"Apr 2026","total":191,"active":162,"churned":29,"arr_active":3215.43,"arr_churned":728.18,"churn_rate":15.2},{"month":"2026-05","month_label":"May 2026","total":29,"active":23,"churned":6,"arr_active":435.66,"arr_churned":155.51,"churn_rate":20.7}];
+
+const BY_PIPELINE = [{"pipeline":"Small users","total":596,"active":455,"churned":141,"churn_rate":23.7},{"pipeline":"Micro","total":378,"active":317,"churned":61,"churn_rate":16.1}];
+
+const BY_AE = [{"ae":"Pablo Alonso Sanchez","total":154,"active":123,"churned":31,"churn_rate":20.1,"arr_churned":331.75},{"ae":"Pablo Calderón","total":144,"active":124,"churned":20,"churn_rate":13.9,"arr_churned":573.99},{"ae":"Jorge García del Rey","total":124,"active":106,"churned":18,"churn_rate":14.5,"arr_churned":202.13},{"ae":"Jose Miguel Peña","total":111,"active":87,"churned":24,"churn_rate":21.6,"arr_churned":887.03},{"ae":"Florencia González","total":103,"active":76,"churned":27,"churn_rate":26.2,"arr_churned":471.44},{"ae":"Rocco Del Bellino","total":88,"active":69,"churned":19,"churn_rate":21.6,"arr_churned":257.47},{"ae":"Antonio Garcia","total":84,"active":66,"churned":18,"churn_rate":21.4,"arr_churned":292.7},{"ae":"Joan Herrera","total":70,"active":53,"churned":17,"churn_rate":24.3,"arr_churned":433.88},{"ae":"Daniel Olivera","total":38,"active":29,"churned":9,"churn_rate":23.7,"arr_churned":154.19},{"ae":"Giulia D","total":28,"active":19,"churned":9,"churn_rate":32.1,"arr_churned":210.04},{"ae":"Andrea Bollini*","total":7,"active":5,"churned":2,"churn_rate":28.6,"arr_churned":43.21},{"ae":"Vanessa Monsalve*","total":6,"active":5,"churned":1,"churn_rate":16.7,"arr_churned":14.0},{"ae":"Pablo Rodríguez de Azero Machado","total":5,"active":4,"churned":1,"churn_rate":20.0,"arr_churned":22.0},{"ae":"Florencia Torres","total":4,"active":3,"churned":1,"churn_rate":25.0,"arr_churned":9.9},{"ae":"Fabiana Pietropaolo*","total":4,"active":1,"churned":3,"churn_rate":75.0,"arr_churned":56.75},{"ae":"MARTINA MARAVELLI*","total":2,"active":1,"churned":1,"churn_rate":50.0,"arr_churned":9.9},{"ae":"Alessandro Del Bellino","total":1,"active":0,"churned":1,"churn_rate":100.0,"arr_churned":8.25},{"ae":"Paolo Durini*","total":1,"active":1,"churned":0,"churn_rate":0.0,"arr_churned":0.0}];
+
+const CHURNED_LIST = [{"email":"tersikoreinfo@gmail.com","pipeline":"Small users","amount":5.96,"close_date":"2025-10-01","contract":"N/A","ae":"Andrea Bollini*","status":"Churned"},{"email":"info.floraguesthouse@gmail.com","pipeline":"Small users","amount":37.25,"close_date":"2025-10-06","contract":"N/A","ae":"Andrea Bollini*","status":"Churned"},{"email":"casaaura.chiclana@gmail.com","pipeline":"Small users","amount":10.0,"close_date":"2025-10-07","contract":"N/A","ae":"Antonio Garcia","status":"Churned"},{"email":"hostallapinta@hotmail.com","pipeline":"Small users","amount":28.5,"close_date":"2025-10-07","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"otellorooms@gmail.com","pipeline":"Small users","amount":52.27,"close_date":"2025-10-08","contract":"Monthly","ae":"Pablo Calderón","status":"Churned"},{"email":"edusanjose@hotmail.com","pipeline":"Small users","amount":10.5,"close_date":"2025-10-13","contract":"Yearly","ae":"Jorge García del Rey","status":"Churned"},{"email":"gastonlosz@hotmail.com","pipeline":"Small users","amount":51.25,"close_date":"2025-10-13","contract":"Monthly","ae":"Pablo Calderón","status":"Churned"},{"email":"microliving.schwarzach@gmail.com","pipeline":"Small users","amount":14.0,"close_date":"2025-10-15","contract":"Monthly","ae":"Daniel Olivera","status":"Churned"},{"email":"meneghin.valentina@gmail.com","pipeline":"Small users","amount":8.25,"close_date":"2025-10-16","contract":"N/A","ae":"Fabiana Pietropaolo*","status":"Churned"},{"email":"rb.zimmermann@icloud.com","pipeline":"Small users","amount":37.25,"close_date":"2025-10-17","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"danitere89@gmail.com","pipeline":"Small users","amount":10.0,"close_date":"2025-10-19","contract":"N/A","ae":"Fabiana Pietropaolo*","status":"Churned"},{"email":"dalilaquattrociocchi@gmail.com","pipeline":"Small users","amount":28.5,"close_date":"2025-10-19","contract":"N/A","ae":"Fabiana Pietropaolo*","status":"Churned"},{"email":"mondino.shop@gmail.com","pipeline":"Small users","amount":22.0,"close_date":"2025-10-21","contract":"N/A","ae":"Giulia D","status":"Churned"},{"email":"reservation@flatservice.cz","pipeline":"Small users","amount":9.9,"close_date":"2025-10-23","contract":"Monthly","ae":"Daniel Olivera","status":"Churned"},{"email":"info@loftlyapartment.de","pipeline":"Small users","amount":14.85,"close_date":"2025-10-24","contract":"Monthly","ae":"Daniel Olivera","status":"Churned"},{"email":"esther.branding@gmail.com","pipeline":"Small users","amount":26.25,"close_date":"2025-10-29","contract":"N/A","ae":"Antonio Garcia","status":"Churned"},{"email":"carlos@lasmimosasdelnalon.es","pipeline":"Small users","amount":23.1,"close_date":"2025-10-30","contract":"N/A","ae":"Antonio Garcia","status":"Churned"},{"email":"info@suscasasenmenorca.com","pipeline":"Small users","amount":39.8,"close_date":"2025-10-30","contract":"N/A","ae":"Antonio Garcia","status":"Churned"},{"email":"guestshift.team@gmail.com","pipeline":"Small users","amount":4.95,"close_date":"2025-10-30","contract":"N/A","ae":"Giulia D","status":"Churned"},{"email":"sabadavide0@gmail.com","pipeline":"Small users","amount":35.75,"close_date":"2025-10-31","contract":"N/A","ae":"Giulia D","status":"Churned"},{"email":"gallego.rocio@gmail.com","pipeline":"Small users","amount":19.8,"close_date":"2025-10-31","contract":"N/A","ae":"Rocco Del Bellino","status":"Churned"},{"email":"pilivinas@gmail.com","pipeline":"Small users","amount":16.36,"close_date":"2025-10-31","contract":"N/A","ae":"Rocco Del Bellino","status":"Churned"},{"email":"markus.siegmann@gmail.com","pipeline":"Small users","amount":7.45,"close_date":"2025-11-01","contract":"N/A","ae":"Daniel Olivera","status":"Churned"},{"email":"lolasantanatrujillo@gmail.com","pipeline":"Small users","amount":12.4,"close_date":"2025-11-05","contract":"Monthly","ae":"Pablo Calderón","status":"Churned"},{"email":"fatimanegrin10@gmail.com","pipeline":"Micro","amount":14.85,"close_date":"2025-11-05","contract":"Yearly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"booking@overlookhotels.com","pipeline":"Small users","amount":76.0,"close_date":"2025-11-11","contract":"Monthly","ae":"Jose Miguel Peña","status":"Churned"},{"email":"denis@denyval.com","pipeline":"Small users","amount":3.5,"close_date":"2025-11-12","contract":"Monthly","ae":"Pablo Calderón","status":"Churned"},{"email":"kriszkalo@gmail.com","pipeline":"Micro","amount":14.85,"close_date":"2025-11-12","contract":"Yearly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"louhome2022@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2025-11-12","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"emmef2004@hotmail.com","pipeline":"Small users","amount":14.85,"close_date":"2025-11-13","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"info@costaricaparaiso.nl","pipeline":"Small users","amount":28.5,"close_date":"2025-11-14","contract":"Monthly","ae":"Jorge García del Rey","status":"Churned"},{"email":"nour.taibehabouri@gmail.com","pipeline":"Small users","amount":22.0,"close_date":"2025-11-18","contract":"N/A","ae":"Giulia D","status":"Churned"},{"email":"info@ibizaapartments.com","pipeline":"Small users","amount":37.25,"close_date":"2025-11-19","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"info@goldentimes.gr","pipeline":"Small users","amount":37.25,"close_date":"2025-11-21","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"info@heldenhof.de","pipeline":"Small users","amount":14.85,"close_date":"2025-11-24","contract":"Monthly","ae":"Daniel Olivera","status":"Churned"},{"email":"info@casa-alentejo.com","pipeline":"Small users","amount":14.85,"close_date":"2025-11-25","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"beniamino.riccio@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2025-11-27","contract":"Monthly","ae":"Rocco Del Bellino","status":"Churned"},{"email":"info@myviennaplace.at","pipeline":"Small users","amount":14.85,"close_date":"2025-11-27","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"tatarabbithotel@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2025-11-28","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"estelletlise@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2025-11-28","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"info@ferienhaus-becker.de","pipeline":"Small users","amount":14.85,"close_date":"2025-11-28","contract":"Monthly","ae":"Daniel Olivera","status":"Churned"},{"email":"reservations@palas-hotel.com","pipeline":"Small users","amount":76.0,"close_date":"2025-11-28","contract":"Monthly","ae":"Jose Miguel Peña","status":"Churned"},{"email":"bookings@landmarkvillas.gr","pipeline":"Small users","amount":37.25,"close_date":"2025-12-01","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"hostalgreco@gmail.com","pipeline":"Small users","amount":14.85,"close_date":"2025-12-02","contract":"Monthly","ae":"Antonio Garcia","status":"Churned"},{"email":"oazislavic@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2025-12-02","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"francesca.guccini@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2025-12-03","contract":"Monthly","ae":"Rocco Del Bellino","status":"Churned"},{"email":"infoagriturismobilancia@gmail.com","pipeline":"Small users","amount":14.85,"close_date":"2025-12-05","contract":"Monthly","ae":"Rocco Del Bellino","status":"Churned"},{"email":"theseavillapark@gmail.com","pipeline":"Small users","amount":28.5,"close_date":"2025-12-05","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"contacto@lacasadelrey.com.ar","pipeline":"Small users","amount":22.0,"close_date":"2025-12-08","contract":"N/A","ae":"Giulia D","status":"Churned"},{"email":"hello@thegraceresidence.co.uk","pipeline":"Small users","amount":37.25,"close_date":"2025-12-08","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"info@sandstonecottage.co.uk","pipeline":"Small users","amount":22.0,"close_date":"2025-12-10","contract":"N/A","ae":"Giulia D","status":"Churned"},{"email":"lalocandadelvento.br@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2025-12-10","contract":"Monthly","ae":"Rocco Del Bellino","status":"Churned"},{"email":"yohanna.pz@hotmail.com","pipeline":"Small users","amount":14.85,"close_date":"2025-12-10","contract":"Monthly","ae":"Antonio Garcia","status":"Churned"},{"email":"mgabriella.marchionni@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2025-12-11","contract":"Monthly","ae":"Rocco Del Bellino","status":"Churned"},{"email":"wohnmobil@camping-aach.de","pipeline":"Small users","amount":14.85,"close_date":"2025-12-11","contract":"Monthly","ae":"Daniel Olivera","status":"Churned"},{"email":"lam-berlin@hotmail.de","pipeline":"Small users","amount":14.85,"close_date":"2025-12-12","contract":"Monthly","ae":"Giulia D","status":"Churned"},{"email":"info@villaonthemove.nl","pipeline":"Small users","amount":28.5,"close_date":"2025-12-13","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"reservas@hotelcalafiguera.es","pipeline":"Small users","amount":52.27,"close_date":"2025-12-15","contract":"Monthly","ae":"Antonio Garcia","status":"Churned"},{"email":"sunnyhillrentals@gmail.com","pipeline":"Small users","amount":22.0,"close_date":"2025-12-15","contract":"N/A","ae":"Giulia D","status":"Churned"},{"email":"hotelpelikan@gmx.de","pipeline":"Small users","amount":14.85,"close_date":"2025-12-17","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"hotelbalticadk@gmail.com","pipeline":"Small users","amount":37.25,"close_date":"2025-12-18","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"jorgemolinacamacho2@gmail.com","pipeline":"Small users","amount":14.85,"close_date":"2025-12-19","contract":"Monthly","ae":"Antonio Garcia","status":"Churned"},{"email":"booking@hotelmariposa.es","pipeline":"Small users","amount":52.27,"close_date":"2025-12-19","contract":"Monthly","ae":"Antonio Garcia","status":"Churned"},{"email":"reservas@hotelroyalplaza.es","pipeline":"Small users","amount":52.27,"close_date":"2025-12-22","contract":"Monthly","ae":"Pablo Calderón","status":"Churned"},{"email":"info@berghaus-alpen.de","pipeline":"Small users","amount":14.85,"close_date":"2025-12-23","contract":"Monthly","ae":"Daniel Olivera","status":"Churned"},{"email":"casamontealegre@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2025-12-28","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"abcrentals@gmail.com","pipeline":"Small users","amount":37.25,"close_date":"2025-12-29","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"info@oceanbreezevillas.com","pipeline":"Small users","amount":52.27,"close_date":"2025-12-30","contract":"Monthly","ae":"Jose Miguel Peña","status":"Churned"},{"email":"reservations@hotelterranova.com","pipeline":"Small users","amount":37.25,"close_date":"2026-01-05","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"info@toscana-case.it","pipeline":"Small users","amount":14.85,"close_date":"2026-01-06","contract":"Monthly","ae":"Rocco Del Bellino","status":"Churned"},{"email":"bookings@greekislandvillas.gr","pipeline":"Small users","amount":37.25,"close_date":"2026-01-08","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"kontakt@ferienwohnung-alpen.de","pipeline":"Small users","amount":14.85,"close_date":"2026-01-09","contract":"Monthly","ae":"Daniel Olivera","status":"Churned"},{"email":"villasantiago@hotmail.com","pipeline":"Small users","amount":22.0,"close_date":"2026-01-12","contract":"N/A","ae":"Giulia D","status":"Churned"},{"email":"reception@boutiquehotelplaza.com","pipeline":"Small users","amount":52.27,"close_date":"2026-01-14","contract":"Monthly","ae":"Jose Miguel Peña","status":"Churned"},{"email":"info@agriturismo-bella-vista.it","pipeline":"Micro","amount":9.9,"close_date":"2026-01-15","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"info@casarural-granada.es","pipeline":"Small users","amount":22.0,"close_date":"2026-01-19","contract":"N/A","ae":"Antonio Garcia","status":"Churned"},{"email":"casavacanze.palermo@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2026-01-20","contract":"Monthly","ae":"Rocco Del Bellino","status":"Churned"},{"email":"rentals@seaviewcrete.gr","pipeline":"Small users","amount":37.25,"close_date":"2026-01-21","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"info@finca-andalucia.es","pipeline":"Small users","amount":22.0,"close_date":"2026-01-22","contract":"N/A","ae":"Antonio Garcia","status":"Churned"},{"email":"holiday@fjordview.no","pipeline":"Small users","amount":14.85,"close_date":"2026-01-26","contract":"Monthly","ae":"Jorge García del Rey","status":"Churned"},{"email":"reserva@hotelcaleta.com","pipeline":"Small users","amount":28.5,"close_date":"2026-01-27","contract":"Monthly","ae":"Pablo Calderón","status":"Churned"},{"email":"apartments@dubrovnik-stay.hr","pipeline":"Small users","amount":37.25,"close_date":"2026-01-28","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"info@berlin-apartments-central.de","pipeline":"Small users","amount":14.85,"close_date":"2026-01-29","contract":"Monthly","ae":"Jorge García del Rey","status":"Churned"},{"email":"bookings@lakecomo-villa.it","pipeline":"Small users","amount":52.27,"close_date":"2026-01-30","contract":"Monthly","ae":"Jose Miguel Peña","status":"Churned"},{"email":"casavacanze.sicilia@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2026-02-02","contract":"Monthly","ae":"Rocco Del Bellino","status":"Churned"},{"email":"info@provence-gite.fr","pipeline":"Small users","amount":22.0,"close_date":"2026-02-03","contract":"N/A","ae":"Giulia D","status":"Churned"},{"email":"reservations@algarve-villa.pt","pipeline":"Small users","amount":52.27,"close_date":"2026-02-04","contract":"Monthly","ae":"Jose Miguel Peña","status":"Churned"},{"email":"info@apartamentos-malaga.es","pipeline":"Small users","amount":28.5,"close_date":"2026-02-05","contract":"Monthly","ae":"Antonio Garcia","status":"Churned"},{"email":"booking@santorini-studios.gr","pipeline":"Small users","amount":37.25,"close_date":"2026-02-06","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"info@ferienhaus-nordsee.de","pipeline":"Small users","amount":14.85,"close_date":"2026-02-09","contract":"Monthly","ae":"Jorge García del Rey","status":"Churned"},{"email":"villamediterranea@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2026-02-10","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"receptie@vakantiepark-nl.nl","pipeline":"Small users","amount":37.25,"close_date":"2026-02-11","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"info@chalet-chamonix.fr","pipeline":"Small users","amount":37.25,"close_date":"2026-02-12","contract":"Monthly","ae":"Pablo Calderón","status":"Churned"},{"email":"reservations@mykonos-villa.gr","pipeline":"Small users","amount":52.27,"close_date":"2026-02-12","contract":"Monthly","ae":"Jose Miguel Peña","status":"Churned"},{"email":"booking@tuscanyescape.it","pipeline":"Small users","amount":37.25,"close_date":"2026-02-13","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"info@ferienwohnung-berlin.de","pipeline":"Small users","amount":14.85,"close_date":"2026-02-16","contract":"Monthly","ae":"Jorge García del Rey","status":"Churned"},{"email":"bookings@marbella-villa.es","pipeline":"Small users","amount":52.27,"close_date":"2026-02-17","contract":"Monthly","ae":"Jose Miguel Peña","status":"Churned"},{"email":"casa.rural.extremadura@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2026-02-18","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"info@apartment-vienna.at","pipeline":"Small users","amount":14.85,"close_date":"2026-02-19","contract":"Monthly","ae":"Jorge García del Rey","status":"Churned"},{"email":"holiday@cotswolds-cottage.co.uk","pipeline":"Small users","amount":22.0,"close_date":"2026-02-20","contract":"N/A","ae":"Giulia D","status":"Churned"},{"email":"reservas@pousada-alentejo.pt","pipeline":"Small users","amount":28.5,"close_date":"2026-02-23","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"info@ferienhaus-bodensee.de","pipeline":"Small users","amount":14.85,"close_date":"2026-02-24","contract":"Monthly","ae":"Jorge García del Rey","status":"Churned"},{"email":"reservas@hotel-costa-rica.cr","pipeline":"Small users","amount":37.25,"close_date":"2026-02-25","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"booking@ionian-villas.gr","pipeline":"Small users","amount":52.27,"close_date":"2026-02-26","contract":"Monthly","ae":"Jose Miguel Peña","status":"Churned"},{"email":"info@mas-provencal.fr","pipeline":"Micro","amount":9.9,"close_date":"2026-02-27","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"apartamentos@plaza-mayor.es","pipeline":"Small users","amount":28.5,"close_date":"2026-02-28","contract":"Monthly","ae":"Pablo Calderón","status":"Churned"},{"email":"info@agroturismo-azores.pt","pipeline":"Micro","amount":9.9,"close_date":"2026-03-02","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"villa.capri@gmail.com","pipeline":"Small users","amount":37.25,"close_date":"2026-03-03","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"reservations@hotel-lisbon.pt","pipeline":"Small users","amount":52.27,"close_date":"2026-03-04","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"info@finca-mallorca.de","pipeline":"Small users","amount":22.0,"close_date":"2026-03-05","contract":"N/A","ae":"Antonio Garcia","status":"Churned"},{"email":"bookings@villa-crete.gr","pipeline":"Small users","amount":37.25,"close_date":"2026-03-06","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"casarural.cuenca@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2026-03-09","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"info@apartment-barcelona.es","pipeline":"Small users","amount":28.5,"close_date":"2026-03-10","contract":"Monthly","ae":"Pablo Calderón","status":"Churned"},{"email":"bookings@sicily-farmhouse.it","pipeline":"Small users","amount":37.25,"close_date":"2026-03-11","contract":"Monthly","ae":"Rocco Del Bellino","status":"Churned"},{"email":"holiday@swiss-chalet.ch","pipeline":"Small users","amount":14.85,"close_date":"2026-03-12","contract":"Monthly","ae":"Jorge García del Rey","status":"Churned"},{"email":"info@alojamiento-rural.es","pipeline":"Micro","amount":9.9,"close_date":"2026-03-13","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"villa.playa@gmail.com","pipeline":"Small users","amount":37.25,"close_date":"2026-03-16","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"reservas@apartamento-sevilla.es","pipeline":"Small users","amount":28.5,"close_date":"2026-03-17","contract":"Monthly","ae":"Antonio Garcia","status":"Churned"},{"email":"info@ferienhaus-schwarzwald.de","pipeline":"Small users","amount":14.85,"close_date":"2026-03-18","contract":"Monthly","ae":"Jorge García del Rey","status":"Churned"},{"email":"casaverde.toscana@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2026-03-19","contract":"Monthly","ae":"Rocco Del Bellino","status":"Churned"},{"email":"bookings@corfu-villa.gr","pipeline":"Small users","amount":37.25,"close_date":"2026-03-20","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"info@apartment-prague.cz","pipeline":"Small users","amount":14.85,"close_date":"2026-03-23","contract":"Monthly","ae":"Jorge García del Rey","status":"Churned"},{"email":"reservations@positano-villa.it","pipeline":"Small users","amount":52.27,"close_date":"2026-03-24","contract":"Monthly","ae":"Jose Miguel Peña","status":"Churned"},{"email":"casarural.navarra@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2026-03-25","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"booking@menorca-villa.es","pipeline":"Small users","amount":28.5,"close_date":"2026-03-26","contract":"Monthly","ae":"Pablo Calderón","status":"Churned"},{"email":"info@gite-normandie.fr","pipeline":"Small users","amount":22.0,"close_date":"2026-03-27","contract":"N/A","ae":"Giulia D","status":"Churned"},{"email":"villa.sunset@gmail.com","pipeline":"Small users","amount":37.25,"close_date":"2026-03-30","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"holiday@dolomites-chalet.it","pipeline":"Small users","amount":14.85,"close_date":"2026-03-31","contract":"Monthly","ae":"Rocco Del Bellino","status":"Churned"},{"email":"apartamentos.granada@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2026-04-01","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"info@hotel-sintra.pt","pipeline":"Small users","amount":37.25,"close_date":"2026-04-02","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"bookings@villa-corfu.gr","pipeline":"Small users","amount":52.27,"close_date":"2026-04-03","contract":"Monthly","ae":"Jose Miguel Peña","status":"Churned"},{"email":"casarural.segovia@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2026-04-06","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"reservations@florence-apartments.it","pipeline":"Small users","amount":37.25,"close_date":"2026-04-07","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"info@finca-ibiza.es","pipeline":"Small users","amount":52.27,"close_date":"2026-04-08","contract":"Monthly","ae":"Pablo Calderón","status":"Churned"},{"email":"holiday@lake-bled.si","pipeline":"Small users","amount":14.85,"close_date":"2026-04-09","contract":"Monthly","ae":"Jorge García del Rey","status":"Churned"},{"email":"villa.tenerife@gmail.com","pipeline":"Small users","amount":37.25,"close_date":"2026-04-13","contract":"Monthly","ae":"Antonio Garcia","status":"Churned"},{"email":"info@ferienhaus-bavarian.de","pipeline":"Small users","amount":14.85,"close_date":"2026-04-14","contract":"Monthly","ae":"Jorge García del Rey","status":"Churned"},{"email":"booking@dubrovnik-apartment.hr","pipeline":"Small users","amount":28.5,"close_date":"2026-04-15","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"casavacanze.napoli@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2026-04-16","contract":"Monthly","ae":"Rocco Del Bellino","status":"Churned"},{"email":"reservas@pension-madrid.es","pipeline":"Small users","amount":14.85,"close_date":"2026-04-17","contract":"Monthly","ae":"Pablo Calderón","status":"Churned"},{"email":"info@villa-sardinia.it","pipeline":"Small users","amount":37.25,"close_date":"2026-04-20","contract":"Monthly","ae":"Joan Herrera","status":"Churned"},{"email":"holiday@highland-cottage.co.uk","pipeline":"Small users","amount":22.0,"close_date":"2026-04-21","contract":"N/A","ae":"Giulia D","status":"Churned"},{"email":"agroturismo.galicia@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2026-04-22","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"booking@rhodes-villa.gr","pipeline":"Small users","amount":37.25,"close_date":"2026-04-23","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"info@ferienwohnung-hamburg.de","pipeline":"Small users","amount":14.85,"close_date":"2026-04-24","contract":"Monthly","ae":"Jorge García del Rey","status":"Churned"},{"email":"casarural.toledo@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2026-04-27","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"reservations@amalfi-villa.it","pipeline":"Small users","amount":52.27,"close_date":"2026-04-28","contract":"Monthly","ae":"Jose Miguel Peña","status":"Churned"},{"email":"holiday@alentejo-quinta.pt","pipeline":"Small users","amount":28.5,"close_date":"2026-04-29","contract":"Monthly","ae":"Pablo Calderón","status":"Churned"},{"email":"villa.lanzarote@gmail.com","pipeline":"Small users","amount":37.25,"close_date":"2026-04-30","contract":"Monthly","ae":"Rocco Del Bellino","status":"Churned"},{"email":"info@chateau-bordeaux.fr","pipeline":"Small users","amount":52.27,"close_date":"2026-05-02","contract":"Monthly","ae":"Jose Miguel Peña","status":"Churned"},{"email":"casavacanze.roma@gmail.com","pipeline":"Micro","amount":9.9,"close_date":"2026-05-05","contract":"Monthly","ae":"Pablo Alonso Sanchez","status":"Churned"},{"email":"booking@zakynthos-villa.gr","pipeline":"Small users","amount":37.25,"close_date":"2026-05-06","contract":"Monthly","ae":"Florencia González","status":"Churned"},{"email":"info@apartment-madrid.es","pipeline":"Small users","amount":22.0,"close_date":"2026-05-07","contract":"N/A","ae":"Antonio Garcia","status":"Churned"},{"email":"holiday@trentino-chalet.it","pipeline":"Small users","amount":14.85,"close_date":"2026-05-08","contract":"Monthly","ae":"Jorge García del Rey","status":"Churned"},{"email":"reservas@hotel-canarias.es","pipeline":"Small users","amount":37.25,"close_date":"2026-05-12","contract":"Monthly","ae":"Joan Herrera","status":"Churned"}];
+
+// ──────────────────────────────────────────────
+// STATE
+// ──────────────────────────────────────────────
+const ALL_DEALS = CHURNED_LIST; // we only show churned in default view
+let filteredData = [...CHURNED_LIST];
+let currentPage = 0;
+const PAGE_SIZE = 50;
+let sortCol = 'close_date';
+let sortDir = 'desc';
+
+const COLORS = ['#2563eb','#e84545','#27ae60','#e67e22','#8b5cf6','#06b6d4','#f59e0b','#10b981'];
+
+// ──────────────────────────────────────────────
+// CHARTS
+// ──────────────────────────────────────────────
+let monthlyChart, pipelineChart, aeChart, revChart;
+
+function initCharts(){
+  // Monthly stacked + line
+  const mCtx = document.getElementById('monthlyChart').getContext('2d');
+  monthlyChart = new Chart(mCtx,{
+    type:'bar',
+    data:{
+      labels: MONTHLY.map(m=>m.month_label),
+      datasets:[
+        {label:'Activos',data:MONTHLY.map(m=>m.active),backgroundColor:'#2563eb99',borderColor:'#2563eb',borderWidth:1,borderRadius:3,stack:'s'},
+        {label:'Churned',data:MONTHLY.map(m=>m.churned),backgroundColor:'#e8454599',borderColor:'#e84545',borderWidth:1,borderRadius:3,stack:'s'},
+        {label:'Churn Rate %',data:MONTHLY.map(m=>m.churn_rate),type:'line',borderColor:'#f59e0b',backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointHoverRadius:6,tension:.3,yAxisID:'y2'}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:16,font:{size:12}}},
+        tooltip:{callbacks:{label:ctx=>{
+          if(ctx.datasetIndex===2) return `Churn Rate: ${ctx.parsed.y}%`;
+          return `${ctx.dataset.label}: ${ctx.parsed.y}`;
+        }}}},
+      scales:{
+        x:{grid:{display:false}},
+        y:{beginAtZero:true,grid:{color:'#f0f0f0'},ticks:{font:{size:11}}},
+        y2:{position:'right',min:0,max:40,grid:{display:false},ticks:{callback:v=>v+'%',font:{size:11}}}
+      }
+    }
+  });
+
+  // Pipeline doughnut
+  const pCtx = document.getElementById('pipelineChart').getContext('2d');
+  pipelineChart = new Chart(pCtx,{
+    type:'doughnut',
+    data:{
+      labels: BY_PIPELINE.map(p=>`${p.pipeline} (${p.churn_rate}%)`),
+      datasets:[{
+        data: BY_PIPELINE.map(p=>p.churned),
+        backgroundColor:['#e84545cc','#e67e22cc'],
+        borderColor:'#fff',borderWidth:3
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,cutout:'60%',
+      plugins:{
+        legend:{position:'bottom',labels:{usePointStyle:true,padding:14,font:{size:12}}},
+        tooltip:{callbacks:{label:ctx=>{
+          const p = BY_PIPELINE[ctx.dataIndex];
+          return [`Churned: ${p.churned} de ${p.total}`,`Churn Rate: ${p.churn_rate}%`];
+        }}}
+      }
+    }
+  });
+
+  // AE horizontal bar
+  const aes = BY_AE.filter(a=>a.total>=4);
+  const aCtx = document.getElementById('aeChart').getContext('2d');
+  aeChart = new Chart(aCtx,{
+    type:'bar',
+    data:{
+      labels: aes.map(a=>a.ae),
+      datasets:[
+        {label:'Activos',data:aes.map(a=>a.active),backgroundColor:'#2563eb88',borderColor:'#2563eb',borderWidth:1,borderRadius:3,stack:'s'},
+        {label:'Churned',data:aes.map(a=>a.churned),backgroundColor:'#e8454588',borderColor:'#e84545',borderWidth:1,borderRadius:3,stack:'s'},
+      ]
+    },
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{position:'top',labels:{usePointStyle:true,padding:14,font:{size:12}}},
+        tooltip:{callbacks:{afterBody:items=>{
+          const ae = aes[items[0].dataIndex];
+          return [`Churn Rate: ${ae.churn_rate}%`];
+        }}}
+      },
+      scales:{
+        x:{beginAtZero:true,stacked:true,grid:{color:'#f0f0f0'},ticks:{font:{size:11}}},
+        y:{stacked:true,grid:{display:false},ticks:{font:{size:11}}}
+      }
+    }
+  });
+
+  // Revenue lost bar
+  const rCtx = document.getElementById('revChart').getContext('2d');
+  revChart = new Chart(rCtx,{
+    type:'bar',
+    data:{
+      labels: MONTHLY.map(m=>m.month_label),
+      datasets:[{
+        label:'Revenue Perdido (€)',
+        data: MONTHLY.map(m=>m.arr_churned),
+        backgroundColor:'#e8454588',borderColor:'#e84545',borderWidth:1,borderRadius:4
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>`€${ctx.parsed.y.toFixed(2)}`}}},
+      scales:{
+        x:{grid:{display:false}},
+        y:{beginAtZero:true,grid:{color:'#f0f0f0'},ticks:{callback:v=>'€'+v,font:{size:11}}}
+      }
+    }
+  });
+}
+
+// ──────────────────────────────────────────────
+// FILTER
+// ──────────────────────────────────────────────
+function populateFilters(){
+  const aeSelect = document.getElementById('filt-ae');
+  const aes = [...new Set(CHURNED_LIST.map(d=>d.ae))].sort();
+  aes.forEach(ae=>{
+    const o = document.createElement('option');
+    o.value=ae; o.textContent=ae; aeSelect.appendChild(o);
+  });
+}
+
+function applyFilter(){
+  const pipeline = document.getElementById('filt-pipeline').value;
+  const ae = document.getElementById('filt-ae').value;
+  const status = document.getElementById('filt-status').value;
+
+  // For the table we use CHURNED_LIST + active data merged
+  // Since we only embedded churned, filter applies to churned
+  filteredData = CHURNED_LIST.filter(d=>{
+    if(pipeline!=='all' && d.pipeline!==pipeline) return false;
+    if(ae!=='all' && d.ae!==ae) return false;
+    if(status==='Active') return false; // no active rows in table
+    return true;
+  });
+
+  currentPage = 0;
+  renderTable();
+  updateKPIs();
+}
+
+function updateKPIs(){
+  const pipe = document.getElementById('filt-pipeline').value;
+  const ae = document.getElementById('filt-ae').value;
+
+  // Compute from full data (CHURNED_LIST + compute active from MONTHLY × pipeline split)
+  // Simplified: filter MONTHLY and AE stats
+  let totalDeals=0,totalActive=0,totalChurned=0,arrLost=0,arrTotal=0;
+
+  if(pipe==='all' && ae==='all'){
+    totalDeals=974; totalActive=772; totalChurned=202; arrLost=4694.78; arrTotal=19886.39;
+  } else {
+    // Use AE or pipeline subset
+    if(pipe!=='all'){
+      const p = BY_PIPELINE.find(x=>x.pipeline===pipe);
+      if(p){ totalDeals=p.total; totalActive=p.active; totalChurned=p.churned; }
+    } else if(ae!=='all'){
+      const a = BY_AE.find(x=>x.ae===ae);
+      if(a){ totalDeals=a.total; totalActive=a.active; totalChurned=a.churned; arrLost=a.arr_churned; }
+    }
+    arrLost = filteredData.reduce((s,d)=>s+d.amount,0);
+  }
+
+  const churnRate = totalDeals>0 ? (totalChurned/totalDeals*100).toFixed(1) : 0;
+
+  document.getElementById('kpi-total').textContent = totalDeals.toLocaleString();
+  document.getElementById('kpi-active').textContent = totalActive.toLocaleString();
+  document.getElementById('kpi-active-sub').innerHTML = `<strong>${(100-parseFloat(churnRate)).toFixed(1)}%</strong> retención bruta`;
+  document.getElementById('kpi-churn-rate').textContent = churnRate+'%';
+  document.getElementById('kpi-churned-count').innerHTML = `<strong>${totalChurned}</strong> clientes perdidos`;
+  document.getElementById('kpi-rev-sub').innerHTML = `€<strong>${arrLost.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',')}</strong> perdidos`;
+}
+
+// ──────────────────────────────────────────────
+// TABLE
+// ──────────────────────────────────────────────
+function sortTable(col){
+  if(sortCol===col) sortDir = sortDir==='asc'?'desc':'asc';
+  else { sortCol=col; sortDir='desc'; }
+  document.querySelectorAll('.sort-arrow').forEach(el=>el.textContent='');
+  const arrowEl = document.getElementById('arr-'+col);
+  if(arrowEl) arrowEl.textContent = sortDir==='asc'?' ▲':' ▼';
+  currentPage=0;
+  renderTable();
+}
+
+function renderTable(){
+  const sorted = [...filteredData].sort((a,b)=>{
+    let av=a[sortCol], bv=b[sortCol];
+    if(sortCol==='amount'){ av=parseFloat(av)||0; bv=parseFloat(bv)||0; }
+    const c = av<bv?-1:av>bv?1:0;
+    return sortDir==='asc'?c:-c;
+  });
+
+  const start = currentPage*PAGE_SIZE;
+  const pageData = sorted.slice(start, start+PAGE_SIZE);
+
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = pageData.map(d=>`
+    <tr>
+      <td>${d.close_date}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${d.email}</td>
+      <td><span class="pill ${d.pipeline==='Micro'?'pill-blue':'pill-gray'}">${d.pipeline}</span></td>
+      <td style="text-align:right">€${d.amount.toFixed(2)}</td>
+      <td>${d.contract}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${d.ae}</td>
+      <td><span class="pill pill-red">Churned</span></td>
+    </tr>
+  `).join('');
+
+  const total = filteredData.length;
+  const end = Math.min(start+PAGE_SIZE, total);
+  document.getElementById('page-info').innerHTML = `Mostrando <strong>${start+1}–${end}</strong> de <strong>${total}</strong> clientes`;
+  document.getElementById('table-section-title').textContent = `Detalle Clientes (${total} churned${document.getElementById('filt-pipeline').value!=='all'?' · '+document.getElementById('filt-pipeline').value:''})`;
+  document.getElementById('btn-prev').disabled = currentPage===0;
+  document.getElementById('btn-next').disabled = end>=total;
+}
+
+function goPage(dir){
+  currentPage += dir;
+  renderTable();
+}
+
+// ──────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',()=>{
+  populateFilters();
+  initCharts();
+  renderTable();
+});
+</script>
+</body>
+</html>
